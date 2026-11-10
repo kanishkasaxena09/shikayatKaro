@@ -1,0 +1,9 @@
+{
+  "name": "shikayatkaro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intelligent Grievance Redressal and Incident Aggregation Platform",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  }
+}

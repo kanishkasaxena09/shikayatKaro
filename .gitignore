@@ -19,6 +19,7 @@ node_modules/
 # Environment variables, credentials, and secrets
 .env
 .env.*
+!.env.example
 *.env
 *.key
 *.pem
@@ -26,6 +27,9 @@ secrets.json
 
 # SQLite databases and local data
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 *.sqlite
 *.sqlite3
 shikayat_karo.db
@@ -69,3 +73,11 @@ desktop.ini
 logs/
 tmp/
 temp/
+
+# Node / Frontend build artifacts
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+.vite/
+*/.vite/

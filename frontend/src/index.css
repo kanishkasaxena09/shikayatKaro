@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased min-h-screen font-sans;
+  }
+}
+
+/* Custom styles and smooth animations */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.badge-critical {
+  @apply bg-rose-50 text-rose-700 border border-rose-200;
+}
+.badge-high {
+  @apply bg-amber-50 text-amber-700 border border-amber-200;
+}
+.badge-medium {
+  @apply bg-blue-50 text-blue-700 border border-blue-200;
+}
+.badge-low {
+  @apply bg-slate-100 text-slate-700 border border-slate-200;
+}
