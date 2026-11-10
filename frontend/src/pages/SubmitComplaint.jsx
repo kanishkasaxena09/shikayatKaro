@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -17,10 +18,11 @@ import AiAnalysisModal from '../components/AiAnalysisModal';
 import ErrorAlert from '../components/ErrorAlert';
 
 export const SubmitComplaint = () => {
+  const routerLocation = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { addToast } = useToast();
 
-  const [text, setText] = useState('');
+  const [text, setText] = useState(routerLocation.state?.prefillText || '');
   const [locationId, setLocationId] = useState('');
   const [affectedCount, setAffectedCount] = useState(1);
   const [isAnonymous, setIsAnonymous] = useState(!isAuthenticated);
