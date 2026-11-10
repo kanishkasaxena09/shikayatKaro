@@ -1,0 +1,6 @@
+# Optional deep learning dependencies for GPU or high-memory instances
+sentence-transformers>=3.0.0
+torch>=2.2.0
+fastembed>=0.3.0
+onnxruntime>=1.18.0
+scikit-learn>=1.4.0
