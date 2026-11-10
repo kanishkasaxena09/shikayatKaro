@@ -3,8 +3,11 @@
 Aggregates individual complaints into structured, trackable, actionable incidents.
 """
 
+import os
+from datetime import datetime
+from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -61,9 +64,12 @@ app = FastAPI(
 )
 
 # CORS Configuration
+cors_origins_env = os.getenv("CORS_ORIGINS")
+origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()] if cors_origins_env else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -91,10 +97,15 @@ def api_track_alias(
 
 
 @app.get("/api/heatmap", tags=["analytics"])
-def api_heatmap_alias(db=Depends(get_db)):
+def api_heatmap_alias(
+    category: Optional[str] = Query(None, description="Filter by complaint/incident category"),
+    date_from: Optional[datetime] = Query(None, description="ISO format start date"),
+    date_to: Optional[datetime] = Query(None, description="ISO format end date"),
+    db=Depends(get_db)
+):
     """Direct alias for GET /api/heatmap"""
     from backend.routers.analytics import get_heatmap
-    return get_heatmap(category=None, date_from=None, date_to=None, db=db)
+    return get_heatmap(category=category, date_from=date_from, date_to=date_to, db=db)
 
 
 @app.get("/api/dashboard/summary", tags=["analytics"])
