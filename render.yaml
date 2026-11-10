@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: shikayatkaro-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "python run.py"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: EMBEDDER
+        value: fallback
+      - key: DATABASE_URL
+        value: sqlite:///./shikayat_karo.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"

@@ -110,7 +110,7 @@ function App() {
                   <span>Intelligent Grievance Redressal and Incident Aggregation Platform</span>
                 </div>
                 <div className="flex items-center gap-4 text-slate-400">
-                  <span>Backend API: 127.0.0.1:8000</span>
+                  <span>AI Grievance Engine</span>
                   <span>•</span>
                   <span>Version 1.0.0</span>
                 </div>
