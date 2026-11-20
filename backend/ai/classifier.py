@@ -28,111 +28,125 @@ CONFIDENCE_THRESHOLD = 0.35
 
 CATEGORY_PROTOTYPES: Dict[str, List[str]] = {
     "Water & Plumbing": [
-        "Water leakage from pipe in washroom",
+        "Water leakage from pipeline inside washroom",
         "Drinking water cooler is leaking and water is overflowing",
-        "Washbasin tap broken water flowing continuously",
-        "Hostel ground floor mein paani ka pipe phat gaya hai poora paani beh raha hai",
-        "Hostel Block B mein paani ka pipe phat gaya hai poora paani beh raha hai",
-        "Hostel Block B mein paani ka pipe leak ho raha hai",
-        "Paani ka pipe phat gaya hai poora paani beh raha hai",
-        "Nal se paani tapak raha hai band nahi ho raha",
-        "Hostel bathroom mein geyser se leakage ho rahi hai",
-        "पानी का नल टूटा हुआ है और पानी बह रहा है",
-        "शौचालय में पाइपलाइन लीक हो रही है",
-        "Water supply completely cut off in hostel pipeline"
+        "Washbasin tap broken with water flowing continuously",
+        "Water supply completely cut off in hostel pipeline",
+        "Overhead tank is overflowing and flooding the terrace",
+        "Washroom mein paani tapak raha hai aur pipe leak hai",
+        "Nal se paani beh raha hai band nahi ho raha",
+        "Bathroom mein geyser connection se leakage ho rahi hai",
+        "Hostel ground floor par paani ki main pipeline phat gayi hai",
+        "पानी का नल टूटा हुआ है और पानी लगातार बह रहा है",
+        "शौचालय में पाइपलाइन लीक हो रही है और पानी भर गया है",
+        "पीने के पानी की आपूर्ति पूरी तरह ठप हो गई है"
     ],
     "Electrical": [
         "Electric spark coming from main switchboard in hallway",
         "Ceiling fan is making loud noise and not spinning",
-        "Power socket in lab burnt and giving electric shock",
-        "Room ka pankha nahi chal raha switch kharab ho gaya",
+        "Power socket in computer lab burnt and giving electric shock",
+        "Corridor lights are flickering and causing complete darkness",
+        "Room ka pankha nahi chal raha switch board kharab ho gaya",
         "Socket mein se spark nikal raha hai current aa raha hai",
-        "Bijli chali gayi hai tube light fuse ho gayi hai",
-        "कमरे का पंखा और लाइट काम नहीं कर रहे हैं",
-        "बिजली के बोर्ड से स्पार्क निकल रहा है करंट का खतरा है",
-        "Corridor lights are flickering and causing complete darkness"
+        "Bijli chali gayi hai aur tube light fuse ho gayi hai",
+        "कमरे का पंखा और ट्यूबलाइट काम नहीं कर रहे हैं",
+        "बिजली के मुख्य बोर्ड से स्पार्क निकल रहा है करंट का खतरा है",
+        "परिसर की स्ट्रीट लाइट बंद है और अंधेरा छाया हुआ है"
     ],
     "Sanitation & Cleanliness": [
         "Washroom is extremely dirty with choked toilet flush",
         "Garbage bin overflowing in corridor bad smell spreading",
         "Cockroaches and insects infestation in washroom",
+        "Floor needs immediate disinfection and deep cleaning",
         "Bathroom bohot ganda hai flush jam ho gaya hai",
         "Corridor mein kachra pada hai bohot badboo aa rahi hai",
         "Safai nahi hui hai dustbin poora overflow kar raha hai",
         "शौचालय बहुत गंदा है और बदबू आ रही है",
         "कचरा पेटी भरी हुई है और सफाई नहीं हुई है",
-        "Floor needs immediate disinfection and deep cleaning"
+        "नालियों में गंदगी जमा है और कीड़े फैल रहे हैं"
     ],
     "IT & Network": [
         "Campus Wi-Fi is disconnected and router has no internet signal",
         "Lab computer network cable damaged cannot connect to portal",
         "Internet speed is extremely slow and portal is not opening",
+        "Student ERP portal connection timeout and gateway down",
         "Hostel wifi connect nahi ho raha internet band hai",
         "Wifi speed bohot slow hai lab mein net nahi chal raha",
         "Router down hai portal open nahi ho raha network error aa raha",
         "इंटरनेट बिल्कुल नहीं चल रहा है वाईफाई बंद है",
-        "लैब का नेटवर्क काम नहीं कर रहा है",
-        "Student ERP portal connection timeout and gateway down"
+        "कंप्यूटर लैब का नेटवर्क काम नहीं कर रहा है",
+        "छात्र पोर्टल सर्वर डाउन है और लॉगिन नहीं हो रहा"
     ],
     "Hostel & Mess": [
         "Mess food quality is poor insect found in daal",
         "Student mess meal unhygienic and cold food served",
         "Hostel bed mattress is torn and cupboard latch broken",
+        "Dinner not served properly in student mess dining hall",
         "Mess ke khane mein daal kacchi hai roti kharab mili",
         "Hostel room cupboard almirah door hinge broken",
-        "Hostel room ka bed toota hua hai mattress replace karo",
-        "मेस के खाने में कीड़ा निकला और खाना खराब है",
-        "कमरे का फर्नीचर और अलमारी टूटी हुई है",
-        "Dinner not served properly in student mess dining hall"
+        "Hostel room ka bed toota hua hai furniture replace karo",
+        "मेस के खाने में कीड़ा निकला और भोजन बहुत खराब है",
+        "कमरे का फर्नीचर और अलमारी की कुंडी टूटी हुई है",
+        "हॉस्टल मेस में पीने का साफ पानी उपलब्ध नहीं है"
     ],
     "Classroom & Infrastructure": [
         "Classroom projector is not turning on and display is blur",
         "Lecture hall benches and desks are broken",
         "Air conditioner in seminar hall is broken and leaking",
+        "Blackboard broken and ceiling plaster falling down",
         "Classroom ka projector display nahi dikha raha display cut ho raha",
         "Lecture hall ki bench tooti hui hai baithne ki jagah nahi hai",
         "Seminar hall ka AC kharab hai garmi bohot lag rahi hai",
         "कक्षा का प्रोजेक्टर खराब है स्क्रीन नहीं चल रही",
         "क्लासरूम की टेबल और कुर्सियां टूटी हुई हैं",
-        "Blackboard broken and ceiling plaster falling down"
+        "लेक्चर हॉल की छत से प्लास्टर गिर रहा है खतरा है"
     ],
     "Safety & Security": [
         "Bicycle stolen from hostel cycle parking area",
         "Streetlight near boundary wall broken complete dark and unsafe",
         "Unauthorized outsiders entered hostel premises without entry pass",
+        "Suspicious individuals wandering near student residences",
         "Parking se meri cycle chori ho gayi security guard nahi tha",
         "Raat ko boundary wall ke paas streetlight band rehti hai dar lagta hai",
-        "Hostel gate par security check nahi ho raha bahar ke log aa rahe",
-        "साइकिल पार्किंग से चोरी हो गई गार्ड मौजूद नहीं था",
+        "Hostel gate par security check nahi ho raha anjan log aa rahe",
+        "साइकिल पार्किंग से चोरी हो गई सुरक्षा गार्ड मौजूद नहीं था",
         "कैंपस की बाउंड्री पर अंधेरा है सुरक्षा का खतरा है",
-        "Suspicious individuals wandering near student residences"
+        "हॉस्टल परिसर में अज्ञात व्यक्ति बिना अनुमति घूम रहे हैं"
     ],
     "Harassment & Misconduct (confidential)": [
         "Senior students ragging and bullying junior students in hostel",
         "Verbal harassment and inappropriate stalking behavior near library",
         "Threatening and abusive behavior from peers during college hours",
+        "Confidential report of intimidation and misconduct",
         "Hostel mein seniors ragging le rahe hain dhamki de rahe hain",
         "Library ke paas ladko ne gandi comments ki aur piche piche aaye",
         "Abusive language use ki aur threatening di ja rahi hai",
-        "सीनियर छात्रों द्वारा रैगिंग और धमकाने का मामला",
-        "परिसर में पीछा करना और गलत व्यवहार करना",
-        "Confidential report of intimidation and misconduct"
+        "सीनियर छात्रों द्वारा रैगिंग और धमकाने का गंभीर मामला",
+        "परिसर में पीछा करना और अशोभनीय व्यवहार करना",
+        "सहपाठियों द्वारा गाली-गलौज और मानसिक उत्पीड़न की शिकायत"
     ],
     "Administrative": [
         "Fee receipt not updated in accounts office after online payment",
         "Hostel caution money refund pending since three months",
         "Student ID card replacement application delay at admin office",
+        "Marksheet correction request stuck with examination branch",
         "Admin office se fees receipt nahi mili account update nahi hua",
         "Caution money refund nahi aaya bohot din se chakkar kaat rahe",
         "Student ID card request pending hai koi sunwai nahi ho rahi",
-        "फीस जमा होने के बाद भी रसीद नहीं दी गई",
-        "एडमिन ऑफिस से छात्र पहचान पत्र में देरी हो रही है",
-        "Marksheet correction request stuck with examination branch"
+        "फीस जमा होने के बाद भी रसीद अपडेट नहीं की गई है",
+        "एडमिन ऑफिस से छात्र पहचान पत्र में अनावश्यक देरी हो रही है",
+        "अंकतालिका सुधार का आवेदन परीक्षा शाखा में अटका हुआ है"
     ]
 }
 
 # Pre-computed prototype centroid cache
 _CATEGORY_CENTROIDS: Dict[str, List[float]] = {}
+
+
+def reset_category_centroids():
+    """Clears the cached centroids so they can be recomputed with a new embedder."""
+    global _CATEGORY_CENTROIDS
+    _CATEGORY_CENTROIDS = {}
 
 
 def _get_category_centroids() -> Dict[str, List[float]]:
