@@ -1,5 +1,6 @@
 """Incident suggestions router for Project Shikayat Karo."""
 
+import threading
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -17,6 +18,8 @@ from backend.ai.escalation import calculate_deadline
 from backend.clock import get_current_time
 
 router = APIRouter(prefix="/api/suggestions", tags=["suggestions"])
+
+_SUGGESTION_LOCK = threading.Lock()
 
 
 def generate_incident_code(db: Session) -> str:
@@ -37,6 +40,7 @@ def serialize_suggestion(sugg: Suggestion, db: Session) -> SuggestionOut:
         complaint_ids=c_ids,
         confidence=sugg.confidence,
         reasons=sugg.reasons,
+        engine=getattr(sugg, "engine", "fallback") or "fallback",
         status=sugg.status,
         incident_id=sugg.incident_id,
         created_at=sugg.created_at,
@@ -67,130 +71,135 @@ def confirm_suggestion(
     db: Session = Depends(get_db)
 ):
     """Confirms a suggestion, converting clustered complaints into a formal Parent Incident."""
-    sugg = db.query(Suggestion).filter(Suggestion.id == id).first()
-    if not sugg:
-        raise HTTPException(status_code=404, detail="Suggestion not found")
+    with _SUGGESTION_LOCK:
+        sugg = db.query(Suggestion).filter(Suggestion.id == id).first()
+        if not sugg:
+            raise HTTPException(status_code=404, detail="Suggestion not found")
 
-    if sugg.status != "pending":
-        raise HTTPException(status_code=400, detail=f"Cannot confirm suggestion with status '{sugg.status}'")
+        if sugg.status != "pending":
+            raise HTTPException(status_code=409, detail=f"Suggestion #{sugg.id} has already been {sugg.status}")
 
-    c_ids = sugg.complaint_ids or []
-    complaints = db.query(Complaint).filter(Complaint.id.in_(c_ids)).all()
-    if not complaints:
-        raise HTTPException(status_code=400, detail="No active complaints found in this suggestion")
+        c_ids = sugg.complaint_ids or []
+        complaints = db.query(Complaint).filter(Complaint.id.in_(c_ids)).all()
+        if not complaints:
+            raise HTTPException(status_code=400, detail="No active complaints found in this suggestion")
 
-    now = get_current_time()
-    inc_code = generate_incident_code(db)
+        already_linked = [c for c in complaints if c.incident_id is not None]
+        if already_linked:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Complaints in this suggestion have already been grouped into Parent Incident #{already_linked[0].incident_id}."
+            )
 
-    # Determine aggregated category and location
-    primary_category = complaints[0].category
-    primary_location_id = complaints[0].location_id
+        now = get_current_time()
+        inc_code = generate_incident_code(db)
 
-    # Determine priority: pick highest among complaints
-    prio_order = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
-    highest_prio = "Low"
-    for c in complaints:
-        if prio_order.get(c.priority, 1) > prio_order.get(highest_prio, 1):
-            highest_prio = c.priority
+        # Determine aggregated category and location
+        primary_category = complaints[0].category
+        primary_location_id = complaints[0].location_id
 
-    final_priority = payload.priority or highest_prio
+        # Determine priority: pick highest among complaints
+        prio_order = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
+        highest_prio = "Low"
+        for c in complaints:
+            if prio_order.get(c.priority, 1) > prio_order.get(highest_prio, 1):
+                highest_prio = c.priority
 
-    # Calculate transparent impact score
-    # Aggregate affected count
-    total_affected = sum(c.affected_count for c in complaints)
-    # Longest hours open among complaints
-    longest_hours_open = max((now - c.created_at).total_seconds() / 3600.0 for c in complaints)
+        final_priority = payload.priority or highest_prio
 
-    # Base severity and urgency mapped from priority level
-    sev_map = {"Critical": 85.0, "High": 70.0, "Medium": 50.0, "Low": 25.0}
-    urg_map = {"Critical": 90.0, "High": 75.0, "Medium": 50.0, "Low": 20.0}
+        # Calculate transparent impact score
+        total_affected = sum(c.affected_count for c in complaints)
+        longest_hours_open = max((now - c.created_at).total_seconds() / 3600.0 for c in complaints)
 
-    impact_result = calculate_impact(
-        severity=sev_map.get(final_priority, 50.0),
-        urgency=urg_map.get(final_priority, 50.0),
-        affected_count=max(total_affected, len(complaints)),
-        hours_open=longest_hours_open
-    )
+        sev_map = {"Critical": 85.0, "High": 70.0, "Medium": 50.0, "Low": 25.0}
+        urg_map = {"Critical": 90.0, "High": 75.0, "Medium": 50.0, "Low": 20.0}
 
-    # Auto-assign department if not specified
-    dept_id = payload.department_id
-    if not dept_id:
-        dept_match = {
-            "Water & Plumbing": "Estate & Maintenance",
-            "Electrical": "Electrical & Power",
-            "Sanitation & Cleanliness": "Estate & Maintenance",
-            "IT & Network": "IT & Networking",
-            "Hostel & Mess": "Hostel & Food Services",
-            "Safety & Security": "Campus Security & Proctorial",
-            "Harassment & Misconduct (confidential)": "Campus Security & Proctorial",
-            "Classroom & Infrastructure": "Academic & Student Affairs",
-            "Administrative": "Academic & Student Affairs",
+        impact_result = calculate_impact(
+            severity=sev_map.get(final_priority, 50.0),
+            urgency=urg_map.get(final_priority, 50.0),
+            affected_count=max(total_affected, len(complaints)),
+            hours_open=longest_hours_open
+        )
+
+        # Auto-assign department if not specified
+        dept_id = payload.department_id
+        if not dept_id:
+            dept_match = {
+                "Water & Plumbing": "Estate & Maintenance",
+                "Electrical": "Electrical & Power",
+                "Sanitation & Cleanliness": "Estate & Maintenance",
+                "IT & Network": "IT & Networking",
+                "Hostel & Mess": "Hostel & Food Services",
+                "Safety & Security": "Campus Security & Proctorial",
+                "Harassment & Misconduct (confidential)": "Campus Security & Proctorial",
+                "Classroom & Infrastructure": "Academic & Student Affairs",
+                "Administrative": "Academic & Student Affairs",
+            }
+            dept_name = dept_match.get(primary_category, "Estate & Maintenance")
+            dept = db.query(Department).filter(Department.name == dept_name).first()
+            if dept:
+                dept_id = dept.id
+
+        # Construct Title
+        loc_name = complaints[0].location.name if complaints[0].location else "Campus Area"
+        inc_title = payload.title or f"{primary_category} issue near {loc_name} ({len(complaints)} complaints grouped)"
+
+        # Compute parent incident deadline
+        deadline = calculate_deadline(db, final_priority, now)
+
+        # Create Parent Incident
+        incident = Incident(
+            code=inc_code,
+            title=inc_title,
+            category=primary_category,
+            location_id=primary_location_id,
+            department_id=dept_id,
+            priority=final_priority,
+            impact_score=impact_result["impact_score"],
+            impact_breakdown=impact_result,
+            relatedness_confidence=sugg.confidence,
+            status="Assigned" if dept_id else "AI Analysed",
+            deadline_at=deadline,
+            escalation_level=0,
+            resolution_notes=None,
+            created_at=now
+        )
+        db.add(incident)
+        db.flush()
+
+        # Link complaints to the parent incident
+        for c in complaints:
+            c.incident_id = incident.id
+            c.department_id = dept_id
+            c.status = "Assigned" if dept_id else "AI Analysed"
+            c.deadline_at = deadline
+
+        # Update suggestion status
+        sugg.status = "confirmed"
+        sugg.incident_id = incident.id
+
+        # Audit Update for confirmation
+        audit = Update(
+            target_type="incident",
+            target_id=incident.id,
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            old_status=None,
+            new_status=incident.status,
+            remarks=f"Confirmed Suggestion #{sugg.id}. Grouped {len(complaints)} complaints into Parent Incident {incident.code}.",
+            event_type="confirmation",
+            timestamp=now
+        )
+        db.add(audit)
+        db.commit()
+
+        return {
+            "message": f"Suggestion #{sugg.id} confirmed successfully.",
+            "incident_id": incident.id,
+            "incident_code": incident.code,
+            "impact_score": incident.impact_score,
+            "grouped_complaint_ids": c_ids
         }
-        dept_name = dept_match.get(primary_category, "Estate & Maintenance")
-        dept = db.query(Department).filter(Department.name == dept_name).first()
-        if dept:
-            dept_id = dept.id
-
-    # Construct Title
-    loc_name = complaints[0].location.name if complaints[0].location else "Campus Area"
-    inc_title = payload.title or f"{primary_category} issue near {loc_name} ({len(complaints)} complaints grouped)"
-
-    # Compute parent incident deadline
-    deadline = calculate_deadline(db, final_priority, now)
-
-    # Create Parent Incident
-    incident = Incident(
-        code=inc_code,
-        title=inc_title,
-        category=primary_category,
-        location_id=primary_location_id,
-        department_id=dept_id,
-        priority=final_priority,
-        impact_score=impact_result["impact_score"],
-        impact_breakdown=impact_result,
-        relatedness_confidence=sugg.confidence,
-        status="Assigned" if dept_id else "AI Analysed",
-        deadline_at=deadline,
-        escalation_level=0,
-        resolution_notes=None,
-        created_at=now
-    )
-    db.add(incident)
-    db.flush()
-
-    # Link complaints to the parent incident
-    for c in complaints:
-        c.incident_id = incident.id
-        c.department_id = dept_id
-        c.status = "Assigned" if dept_id else "AI Analysed"
-        c.deadline_at = deadline
-
-    # Update suggestion status
-    sugg.status = "confirmed"
-    sugg.incident_id = incident.id
-
-    # Audit Update for confirmation
-    audit = Update(
-        target_type="incident",
-        target_id=incident.id,
-        actor_id=current_user.id,
-        actor_role=current_user.role,
-        old_status=None,
-        new_status=incident.status,
-        remarks=f"Confirmed Suggestion #{sugg.id}. Grouped {len(complaints)} complaints into Parent Incident {incident.code}.",
-        event_type="confirmation",
-        timestamp=now
-    )
-    db.add(audit)
-    db.commit()
-
-    return {
-        "message": f"Suggestion #{sugg.id} confirmed successfully.",
-        "incident_id": incident.id,
-        "incident_code": incident.code,
-        "impact_score": incident.impact_score,
-        "grouped_complaint_ids": c_ids
-    }
 
 
 @router.post("/{id}/reject")

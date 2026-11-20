@@ -191,6 +191,15 @@ export const Suggestions = () => {
                     >
                       {sugg.status}
                     </span>
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider ${
+                        sugg.engine === 'neural'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      Engine: {sugg.engine || 'fallback'}
+                    </span>
                   </div>
                   <p className="text-xs text-slate-500">
                     Created on {new Date(sugg.created_at).toLocaleString()}

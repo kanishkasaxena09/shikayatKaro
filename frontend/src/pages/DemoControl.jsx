@@ -106,13 +106,11 @@ export const DemoControl = () => {
           </div>
 
           <p className="text-xs text-slate-600 leading-relaxed">
-            Automatically simulates <strong>5 incoming complaints</strong> spaced over virtual hours:
+            Simulates a coherent live campus grievance timeline:
           </p>
           <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside bg-slate-50 p-3 rounded-xl border border-slate-100">
-            <li>2 English complaints describing pipe rupture</li>
-            <li>1 Hindi complaint (हिंदी Devanagari)</li>
-            <li>1 Hinglish complaint ("nal ka paani waste ho raha hai")</li>
-            <li>1 Anonymous report with generated access code</li>
+            <li><strong>5 complaints</strong> about Hostel Block B water leak (EN, HI, Hinglish, Anonymous) forming <strong>1 pending AI cluster</strong></li>
+            <li><strong>2 unrelated complaints</strong> (Library Wi-Fi, Computer Lab lighting) that correctly do <strong>NOT</strong> cluster</li>
           </ul>
 
           <button
@@ -128,7 +126,7 @@ export const DemoControl = () => {
             ) : (
               <>
                 <PlayCircle className="w-4 h-4" />
-                Inject 5 Multilingual Complaints
+                Inject Demo Story (5 Clustered + 2 Unrelated)
               </>
             )}
           </button>

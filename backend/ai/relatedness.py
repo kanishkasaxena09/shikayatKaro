@@ -77,8 +77,16 @@ def calculate_relatedness(
     time2: datetime,
     category1: str,
     category2: str,
+    engine: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Computes transparent composite relatedness score and breakdown."""
+    if engine is None:
+        try:
+            from backend.ai.embedder import get_embedder
+            engine = get_embedder().engine_type
+        except Exception:
+            engine = "fallback"
+
     loc_score = get_location_score(loc1_id, loc2_id, block1_id, block2_id)
     t_score = get_time_score(time1, time2)
     cat_match = 1.0 if (category1 and category2 and category1.strip().lower() == category2.strip().lower()) else 0.0
@@ -113,6 +121,7 @@ def calculate_relatedness(
         should_suggest = False
 
     reasons = [
+        f"Engine: {engine}",
         f"Text similarity: {round(text_cosine, 3)} (weight 45% -> {round(0.45 * text_cosine, 3)})",
         f"Location match: {loc_score} ({'Same location' if loc_score == 1.0 else 'Same block' if loc_score == 0.6 else 'Different locations'}) (weight 25% -> {round(0.25 * loc_score, 3)})",
         f"Time proximity: {t_score} ({round(abs((time1 - time2).total_seconds()) / 3600.0, 1)}h apart) (weight 15% -> {round(0.15 * t_score, 3)})",
@@ -129,6 +138,7 @@ def calculate_relatedness(
         "label": label,
         "should_suggest": should_suggest,
         "capped_by_hard_rule": capped,
+        "engine": engine,
         "components": {
             "text_cosine": round(text_cosine, 3),
             "location_score": loc_score,

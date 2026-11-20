@@ -1,106 +1,73 @@
-"""Demo controls and simulation story router for Project Shikayat Karo."""
+"""Demo controls and simulation story router for Project Shikayat Karo.
 
+Controllable via the DEMO_MODE environment variable (default: true for hackathons).
+When DEMO_MODE=false, all endpoints in this router return HTTP 403 Forbidden.
+"""
+
+import os
 from typing import Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, Base, engine
+from backend.database import get_db
 from backend.models import (
     Complaint, Incident, Suggestion, Update, Notification, User, Location, Department
 )
 from backend.schemas import AdvanceTimeRequest
 from backend.clock import get_current_time, advance_time, reset_time, get_offset_hours
 from backend.ai.escalation import check_and_apply_escalations
-from backend.routers.complaints import submit_complaint, ComplaintCreate
-from backend.seed import seed_database
+from backend.seed import seed_demo_story
 
-router = APIRouter(prefix="/api/demo", tags=["demo"])
+
+def is_demo_mode_enabled() -> bool:
+    """Returns True if DEMO_MODE is enabled (default: True)."""
+    val = os.getenv("DEMO_MODE", "true").lower().strip()
+    return val not in ["false", "0", "no", "disabled", "off"]
+
+
+def require_demo_mode():
+    """Dependency that enforces DEMO_MODE.
+    
+    When DEMO_MODE=false, demo endpoints return HTTP 403 Forbidden.
+    """
+    if not is_demo_mode_enabled():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Demo endpoints and story simulator are disabled (DEMO_MODE=false)."
+        )
+
+
+router = APIRouter(prefix="/api/demo", tags=["demo"], dependencies=[Depends(require_demo_mode)])
 
 
 @router.post("/load-story")
 def load_demo_story(db: Session = Depends(get_db)):
     """Loads the canonical demo story:
-    5 complaints about a water leak near Hostel Block B:
-    - 2 English
-    - 1 Hindi
-    - 1 Hinglish
-    - 1 Anonymous
-    Spaced over a few virtual hours, automatically forming an aggregated Suggestion.
+    - 5 complaints about a major water leak at Hostel Block B (EN, HI, Hinglish, Anonymous)
+      forming exactly ONE pending Suggestion for admin confirmation.
+    - 2 unrelated complaints (Library Wi-Fi, Computer Lab lighting) that correctly do NOT cluster.
     """
-    # Find Hostel Block B location
-    block_b = db.query(Location).filter(Location.name == "Hostel Block B").first()
-    loc_id = block_b.id if block_b else None
-
-    # Demo student user
-    student = db.query(User).filter(User.email == "student@demo").first()
-
-    # Reset clock for clean demonstration timeline
     reset_time()
+    res = seed_demo_story(db)
 
-    story_items = [
-        {
-            "advance_before": 0.0,
-            "text": "Water pipe ruptured outside Hostel Block B entrance, drinking water pipeline leaking heavily onto the pathway",
-            "is_anonymous": False,
-            "affected_count": 5
-        },
-        {
-            "advance_before": 1.1,
-            "text": "Severe water leakage from main supply pipe near Hostel Block B, clean water flowing continuously and flooding the corridor entrance",
-            "is_anonymous": False,
-            "affected_count": 8
-        },
-        {
-            "advance_before": 0.9,
-            "text": "हॉस्टल ब्लॉक बी के मुख्य गेट के पास पानी का पाइप फटा हुआ है और सड़क पर बहुत सारा पानी बह रहा है",
-            "is_anonymous": False,
-            "affected_count": 12
-        },
-        {
-            "advance_before": 0.8,
-            "text": "Hostel Block B ground floor ke paas paani ka pipe leak ho raha hai, nal ka paani waste ho raha hai turant theek kijiye",
-            "is_anonymous": False,
-            "affected_count": 15
-        },
-        {
-            "advance_before": 0.7,
-            "text": "Water pipeline broken near Block B hostel entrance, water logging is blocking student access, please fix urgently",
-            "is_anonymous": True,  # Anonymous report
-            "affected_count": 20
-        }
-    ]
+    pending_sugg = db.query(Suggestion).filter(Suggestion.status == "pending").order_by(Suggestion.id.desc()).first()
+    demo_complaints = db.query(Complaint).filter(Complaint.tracking_id.like("CMP-DEMO-%")).all()
 
-    created_complaints: List[Dict[str, Any]] = []
-
-    for item in story_items:
-        if item["advance_before"] > 0:
-            advance_time(item["advance_before"])
-
-        payload = ComplaintCreate(
-            text=item["text"],
-            location_id=loc_id,
-            affected_count=item["affected_count"],
-            is_anonymous=item["is_anonymous"]
-        )
-        res = submit_complaint(payload=payload, current_user=student, db=db)
-        created_complaints.append({
-            "tracking_id": res.complaint.tracking_id,
-            "language": res.complaint.original_language,
-            "is_anonymous": res.complaint.is_anonymous,
-            "access_code": res.access_code,
-            "category": res.complaint.category,
-            "priority": res.complaint.priority,
-            "suggestion_created": res.suggestion_created,
-            "suggestion_id": res.suggestion_id
+    created_info = []
+    for c in demo_complaints:
+        created_info.append({
+            "tracking_id": c.tracking_id,
+            "language": c.original_language,
+            "is_anonymous": c.is_anonymous,
+            "category": c.category,
+            "priority": c.priority,
+            "in_suggestion": bool(pending_sugg and c.id in (pending_sugg.complaint_ids or []))
         })
 
-    # Retrieve final pending suggestion
-    pending_sugg = db.query(Suggestion).filter(Suggestion.status == "pending").order_by(Suggestion.id.desc()).first()
-
     return {
-        "message": "Demo story loaded successfully: 5 complaints submitted across English, Hindi, and Hinglish.",
+        "message": "Demo story loaded: 5 clustered complaints at Hostel Block B + 2 unclustered complaints.",
         "location": "Hostel Block B",
-        "complaints_created": created_complaints,
+        "complaints_created": created_info,
         "pending_suggestion_id": pending_sugg.id if pending_sugg else None,
         "grouped_complaint_count": len(pending_sugg.complaint_ids) if pending_sugg else 0,
         "composite_confidence": pending_sugg.confidence if pending_sugg else 0.0,
@@ -129,18 +96,27 @@ def advance_virtual_time(payload: AdvanceTimeRequest, db: Session = Depends(get_
 
 @router.post("/reset")
 def reset_demo_state(db: Session = Depends(get_db)):
-    """Resets the virtual clock to 0 and clears demo complaints and suggestions."""
+    """Resets the virtual clock to 0 and restores the pristine demo story state:
+    - 15 historical resolved incidents with 37 linked complaints.
+    - 5 complaints at Hostel Block B forming 1 pending AI cluster.
+    - 2 unrelated complaints that do NOT cluster.
+    """
     reset_time()
+    story_res = seed_demo_story(db)
 
-    # Clear dynamically created complaints, suggestions, notifications, non-historical incidents
-    db.query(Complaint).delete()
-    db.query(Suggestion).delete()
-    db.query(Notification).delete()
-    db.query(Update).delete()
-    db.query(Incident).filter(Incident.code.notlike("INC-HIST-%")).delete()
-    db.commit()
+    total_cmp = db.query(Complaint).count()
+    total_inc = db.query(Incident).count()
+    active_inc = db.query(Incident).filter(Incident.status.notin_(["Resolved", "Closed"])).count()
+    resolved_inc = db.query(Incident).filter(Incident.status.in_(["Resolved", "Closed"])).count()
+    pending_sugg = db.query(Suggestion).filter(Suggestion.status == "pending").count()
 
     return {
-        "message": "Demo state and virtual clock reset successfully.",
-        "virtual_time_utc": get_current_time().isoformat()
+        "message": "Demo state and virtual clock reset successfully to pristine story.",
+        "virtual_time_utc": get_current_time().isoformat(),
+        "total_complaints": total_cmp,
+        "total_incidents": total_inc,
+        "active_incidents": active_inc,
+        "resolved_incidents": resolved_inc,
+        "pending_suggestions": pending_sugg,
+        "pending_suggestion_id": story_res.get("pending_suggestion_id")
     }
