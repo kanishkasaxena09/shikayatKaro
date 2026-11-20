@@ -120,7 +120,15 @@ export const AiAnalysisModal = ({ data, onClose }) => {
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-start gap-3 text-xs text-indigo-900">
               <Layers className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
               <div>
-                <strong>Multi-Factor Clustering Match:</strong> Our AI detected related complaints with high semantic, spatial, and temporal proximity. This grievance was automatically grouped into Incident Suggestion #{suggestion_id} for aggregated resolution.
+                <div className="flex items-center gap-2 mb-0.5">
+                  <strong>Multi-Factor Clustering Match:</strong>
+                  {ai_analysis?.relatedness_match?.engine && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold uppercase bg-indigo-100 text-indigo-800 border border-indigo-200">
+                      Engine: {ai_analysis.relatedness_match.engine}
+                    </span>
+                  )}
+                </div>
+                Our AI detected related complaints with high semantic, spatial, and temporal proximity. This grievance was automatically grouped into Incident Suggestion #{suggestion_id} for aggregated resolution.
               </div>
             </div>
           )}
