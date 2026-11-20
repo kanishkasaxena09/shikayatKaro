@@ -71,9 +71,9 @@ class LocationOut(BaseModel):
 
 # ---------------- Complaint Schemas ----------------
 class ComplaintCreate(BaseModel):
-    text: str = Field(..., min_length=5)
+    text: str = Field(..., min_length=5, max_length=5000)
     location_id: Optional[int] = None
-    affected_count: int = Field(default=1, ge=1)
+    affected_count: int = Field(default=1, ge=1, le=100000)
     is_anonymous: bool = False
 
 
@@ -171,6 +171,7 @@ class SuggestionOut(BaseModel):
     complaint_ids: List[int]
     confidence: float
     reasons: Optional[List[str]] = None
+    engine: Optional[str] = "fallback"
     status: str
     incident_id: Optional[int] = None
     created_at: datetime
@@ -242,8 +243,59 @@ class DashboardSummary(BaseModel):
     average_resolution_hours: float
     virtual_clock_utc: str
     virtual_offset_hours: float
+    demo_mode: bool = True
 
 
 # ---------------- Demo Schemas ----------------
 class AdvanceTimeRequest(BaseModel):
     hours: float = Field(..., gt=0)
+
+
+# ---------------- Recurring Issues & Permanent Fix Schemas ----------------
+class PermanentFixTaskOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    task_code: str
+    title: str
+    description: Optional[str] = None
+    category: str
+    location_id: Optional[int] = None
+    department_id: Optional[int] = None
+    department_name: Optional[str] = None
+    created_by_id: Optional[int] = None
+    status: str
+    due_date: datetime
+    incident_ids: Optional[List[int]] = None
+    notes: Optional[str] = None
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+
+class PermanentFixCreate(BaseModel):
+    category: str
+    location_id: int
+    department_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date_days: Optional[int] = 14
+    due_date: Optional[datetime] = None
+    incident_ids: Optional[List[int]] = None
+    notes: Optional[str] = None
+
+
+class RecurringIssueOut(BaseModel):
+    id: str
+    block_id: int
+    block_name: str
+    category: str
+    incident_count: int
+    incident_ids: List[int]
+    incident_codes: List[str]
+    total_affected: int
+    average_resolution_hours: float
+    last_occurrence_at: str
+    days_since_last_occurrence: float
+    has_permanent_fix: bool = False
+    permanent_fix_task: Optional[Dict[str, Any]] = None
+
