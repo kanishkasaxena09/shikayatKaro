@@ -13,10 +13,10 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: EMBEDDER
-        value: fallback
+        value: fastembed
       - key: DATABASE_URL
         value: sqlite:///./shikayat_karo.db
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://shikayatkaro.vercel.app"

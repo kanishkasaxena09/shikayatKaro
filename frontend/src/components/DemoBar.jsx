@@ -8,10 +8,16 @@ export const DemoBar = () => {
   const { user, role, quickSwitchPersona, logout } = useAuth();
   const [clockTime, setClockTime] = useState(null);
   const [offsetHours, setOffsetHours] = useState(0);
+  const [demoEnabled, setDemoEnabled] = useState(true);
 
   const fetchClock = async () => {
     try {
       const res = await api.analytics.getDashboardSummary();
+      if (res.data?.demo_mode === false) {
+        setDemoEnabled(false);
+        return;
+      }
+      setDemoEnabled(true);
       if (res.data?.virtual_clock_utc) {
         const d = new Date(res.data.virtual_clock_utc);
         setClockTime(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -27,6 +33,10 @@ export const DemoBar = () => {
     const interval = setInterval(fetchClock, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  if (!demoEnabled) {
+    return null;
+  }
 
   return (
     <div className="bg-slate-900 border-b border-slate-800 text-slate-300 px-4 py-1.5 text-xs">

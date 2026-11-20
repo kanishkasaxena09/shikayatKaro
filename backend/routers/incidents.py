@@ -1,5 +1,6 @@
 """Incidents management router for Project Shikayat Karo."""
 
+import threading
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -76,14 +77,31 @@ def list_incidents(
     return [serialize_incident_summary(inc) for inc in incidents]
 
 
+_INCIDENT_LOCK = threading.Lock()
+
+
+def find_incident(db: Session, id_or_code: str) -> Optional[Incident]:
+    """Finds an incident by integer ID (e.g. 1) or string code (e.g. 'INC-0001', 'INC-HIST-002')."""
+    if not id_or_code:
+        return None
+    s = str(id_or_code).strip()
+    if s.isdigit():
+        inc = db.query(Incident).filter(Incident.id == int(s)).first()
+        if inc:
+            return inc
+    return db.query(Incident).filter(Incident.code == s).first()
+
+
 @router.get("/{id}", response_model=IncidentDetail)
 def get_incident_detail(
-    id: int,
+    id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Returns complete incident details including linked complaints, audit timeline, and resolution intelligence."""
-    inc = db.query(Incident).filter(Incident.id == id).first()
+    """Returns complete incident details including linked complaints, audit timeline, and resolution intelligence.
+    Supports lookup by integer primary key (e.g. '1', '12') or string code (e.g. 'INC-0001', 'INC-HIST-002').
+    """
+    inc = find_incident(db, id)
     if not inc:
         raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -113,73 +131,74 @@ def get_incident_detail(
 
 @router.post("/{id}/assign")
 def assign_department(
-    id: int,
+    id: str,
     payload: IncidentAssign,
     current_user: User = Depends(require_role(["admin", "handler"])),
     db: Session = Depends(get_db)
 ):
     """Assigns an incident to a department and updates status to 'Assigned'."""
-    inc = db.query(Incident).filter(Incident.id == id).first()
-    if not inc:
-        raise HTTPException(status_code=404, detail="Incident not found")
+    with _INCIDENT_LOCK:
+        inc = find_incident(db, id)
+        if not inc:
+            raise HTTPException(status_code=404, detail="Incident not found")
 
-    dept = db.query(Department).filter(Department.id == payload.department_id).first()
-    if not dept:
-        raise HTTPException(status_code=404, detail="Department not found")
+        dept = db.query(Department).filter(Department.id == payload.department_id).first()
+        if not dept:
+            raise HTTPException(status_code=404, detail="Department not found")
 
-    old_dept_id = inc.department_id
-    old_status = inc.status
-    now = get_current_time()
+        old_dept_id = inc.department_id
+        old_status = inc.status
+        now = get_current_time()
 
-    inc.department_id = dept.id
-    if inc.status in ["Submitted", "AI Analysed"]:
-        inc.status = "Assigned"
+        inc.department_id = dept.id
+        if inc.status in ["Submitted", "AI Analysed"]:
+            inc.status = "Assigned"
 
-    # Propagate to linked complaints
-    for c in inc.complaints:
-        c.department_id = dept.id
-        if c.status in ["Submitted", "AI Analysed"]:
-            c.status = "Assigned"
+        # Propagate to linked complaints
+        for c in inc.complaints:
+            c.department_id = dept.id
+            if c.status in ["Submitted", "AI Analysed"]:
+                c.status = "Assigned"
 
-    # Audit Update
-    audit = Update(
-        target_type="incident",
-        target_id=inc.id,
-        actor_id=current_user.id,
-        actor_role=current_user.role,
-        old_status=old_status,
-        new_status=inc.status,
-        remarks=payload.remarks or f"Assigned to {dept.name} by {current_user.full_name}.",
-        event_type="assignment",
-        timestamp=now
-    )
-    db.add(audit)
-
-    # Notify handlers of that department
-    dept_users = db.query(User).filter(User.department_id == dept.id).all()
-    for u in dept_users:
-        db.add(Notification(
-            user_id=u.id,
-            title=f"New Assignment: {inc.code}",
-            message=f"Incident {inc.code} ({inc.title}) has been assigned to your department.",
+        # Audit Update
+        audit = Update(
             target_type="incident",
             target_id=inc.id,
-            is_read=False,
-            created_at=now
-        ))
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            old_status=old_status,
+            new_status=inc.status,
+            remarks=payload.remarks or f"Assigned to {dept.name} by {current_user.full_name}.",
+            event_type="assignment",
+            timestamp=now
+        )
+        db.add(audit)
 
-    db.commit()
-    return {
-        "message": f"Incident {inc.code} assigned to {dept.name}.",
-        "incident_id": inc.id,
-        "department_id": dept.id,
-        "status": inc.status
-    }
+        # Notify handlers of that department
+        dept_users = db.query(User).filter(User.department_id == dept.id).all()
+        for u in dept_users:
+            db.add(Notification(
+                user_id=u.id,
+                title=f"New Assignment: {inc.code}",
+                message=f"Incident {inc.code} ({inc.title}) has been assigned to your department.",
+                target_type="incident",
+                target_id=inc.id,
+                is_read=False,
+                created_at=now
+            ))
+
+        db.commit()
+        return {
+            "message": f"Incident {inc.code} assigned to {dept.name}.",
+            "incident_id": inc.id,
+            "department_id": dept.id,
+            "status": inc.status
+        }
 
 
 @router.post("/{id}/status")
 def update_status(
-    id: int,
+    id: str,
     payload: IncidentStatusUpdate,
     current_user: User = Depends(require_role(["admin", "handler"])),
     db: Session = Depends(get_db)
@@ -192,74 +211,75 @@ def update_status(
     
     Resolution notes are strictly required when transitioning to 'Resolved' or 'Closed'.
     """
-    inc = db.query(Incident).filter(Incident.id == id).first()
-    if not inc:
-        raise HTTPException(status_code=404, detail="Incident not found")
+    with _INCIDENT_LOCK:
+        inc = find_incident(db, id)
+        if not inc:
+            raise HTTPException(status_code=404, detail="Incident not found")
 
-    valid_statuses = [
-        "Submitted", "AI Analysed", "Assigned", "Under Investigation",
-        "In Progress", "Awaiting Info", "Resolved", "Closed"
-    ]
-    if payload.status not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status '{payload.status}'. Allowed: {', '.join(valid_statuses)}"
-        )
-
-    # Resolution notes required for Resolved and Closed
-    if payload.status in ["Resolved", "Closed"]:
-        if not payload.resolution_notes or not payload.resolution_notes.strip():
+        valid_statuses = [
+            "Submitted", "AI Analysed", "Assigned", "Under Investigation",
+            "In Progress", "Awaiting Info", "Resolved", "Closed"
+        ]
+        if payload.status not in valid_statuses:
             raise HTTPException(
                 status_code=400,
-                detail="Resolution notes are strictly required when setting status to Resolved or Closed."
+                detail=f"Invalid status '{payload.status}'. Allowed: {', '.join(valid_statuses)}"
             )
 
-    old_status = inc.status
-    now = get_current_time()
+        # Resolution notes required for Resolved and Closed
+        if payload.status in ["Resolved", "Closed"]:
+            if not payload.resolution_notes or not payload.resolution_notes.strip():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Resolution notes are strictly required when setting status to Resolved or Closed."
+                )
 
-    inc.status = payload.status
-    if payload.resolution_notes:
-        inc.resolution_notes = payload.resolution_notes.strip()
+        old_status = inc.status
+        now = get_current_time()
 
-    if payload.status in ["Resolved", "Closed"] and not inc.resolved_at:
-        inc.resolved_at = now
+        inc.status = payload.status
+        if payload.resolution_notes:
+            inc.resolution_notes = payload.resolution_notes.strip()
 
-    # Propagate status to linked complaints
-    for c in inc.complaints:
-        c.status = payload.status
+        if payload.status in ["Resolved", "Closed"] and not inc.resolved_at:
+            inc.resolved_at = now
 
-    # Audit Update
-    audit = Update(
-        target_type="incident",
-        target_id=inc.id,
-        actor_id=current_user.id,
-        actor_role=current_user.role,
-        old_status=old_status,
-        new_status=payload.status,
-        remarks=payload.remarks or payload.resolution_notes or f"Status changed from {old_status} to {payload.status}.",
-        event_type="status",
-        timestamp=now
-    )
-    db.add(audit)
+        # Propagate status to linked complaints
+        for c in inc.complaints:
+            c.status = payload.status
 
-    # Notify admins and complainants
-    admins = db.query(User).filter(User.role == "admin").all()
-    for a in admins:
-        db.add(Notification(
-            user_id=a.id,
-            title=f"Status Update: {inc.code} -> {payload.status}",
-            message=f"Incident {inc.code} status changed to {payload.status}.",
+        # Audit Update
+        audit = Update(
             target_type="incident",
             target_id=inc.id,
-            is_read=False,
-            created_at=now
-        ))
+            actor_id=current_user.id,
+            actor_role=current_user.role,
+            old_status=old_status,
+            new_status=payload.status,
+            remarks=payload.remarks or payload.resolution_notes or f"Status changed from {old_status} to {payload.status}.",
+            event_type="status",
+            timestamp=now
+        )
+        db.add(audit)
 
-    db.commit()
-    return {
-        "message": f"Incident {inc.code} status updated to {payload.status}.",
-        "incident_id": inc.id,
-        "old_status": old_status,
-        "new_status": payload.status,
-        "resolved_at": inc.resolved_at
-    }
+        # Notify admins and complainants
+        admins = db.query(User).filter(User.role == "admin").all()
+        for a in admins:
+            db.add(Notification(
+                user_id=a.id,
+                title=f"Status Update: {inc.code} -> {payload.status}",
+                message=f"Incident {inc.code} status changed to {payload.status}.",
+                target_type="incident",
+                target_id=inc.id,
+                is_read=False,
+                created_at=now
+            ))
+
+        db.commit()
+        return {
+            "message": f"Incident {inc.code} status updated to {payload.status}.",
+            "incident_id": inc.id,
+            "old_status": old_status,
+            "new_status": payload.status,
+            "resolved_at": inc.resolved_at
+        }

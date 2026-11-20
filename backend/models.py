@@ -118,6 +118,7 @@ class Suggestion(Base):
     complaint_ids = Column(JSON, nullable=False)  # List[int]
     confidence = Column(Float, nullable=False, default=0.0)
     reasons = Column(JSON, nullable=True)  # List[str]
+    engine = Column(String(50), nullable=True, default="fallback")  # fallback | neural
     status = Column(String(20), nullable=False, default="pending")  # pending | confirmed | rejected
     incident_id = Column(Integer, ForeignKey("incidents.id"), nullable=True)
     created_at = Column(DateTime, default=get_current_time)
@@ -163,3 +164,28 @@ class EscalationRule(Base):
     level_1_percent = Column(Float, nullable=False, default=100.0)
     level_2_percent = Column(Float, nullable=False, default=150.0)
     level_3_percent = Column(Float, nullable=False, default=200.0)
+
+
+class PermanentFixTask(Base):
+    """Tracks infrastructure root-cause remediation tasks for recurring issues."""
+    __tablename__ = "permanent_fix_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    task_code = Column(String(30), unique=True, index=True, nullable=False)  # PFIX-001
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(100), nullable=False)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    status = Column(String(30), nullable=False, default="Scheduled")  # Scheduled | In Progress | Completed
+    due_date = Column(DateTime, nullable=False)
+    incident_ids = Column(JSON, nullable=True)  # List[int]
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=get_current_time)
+    completed_at = Column(DateTime, nullable=True)
+
+    location = relationship("Location")
+    department = relationship("Department")
+    created_by = relationship("User")
+

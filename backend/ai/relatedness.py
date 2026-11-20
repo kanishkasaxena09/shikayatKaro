@@ -77,27 +77,50 @@ def calculate_relatedness(
     time2: datetime,
     category1: str,
     category2: str,
+    engine: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Computes transparent composite relatedness score and breakdown."""
+    if engine is None:
+        try:
+            from backend.ai.embedder import get_embedder
+            engine = get_embedder().engine_type
+        except Exception:
+            engine = "fallback"
+
     loc_score = get_location_score(loc1_id, loc2_id, block1_id, block2_id)
     t_score = get_time_score(time1, time2)
     cat_match = 1.0 if (category1 and category2 and category1.strip().lower() == category2.strip().lower()) else 0.0
 
+    delta_seconds = abs((time1 - time2).total_seconds())
+    hours = delta_seconds / 3600.0
+
     # Composite weighted formula
     raw_score = (0.45 * text_cosine) + (0.25 * loc_score) + (0.15 * t_score) + (0.15 * cat_match)
     
-    # Hard rule: if category AND location both differ, cap score at 0.40
     capped = False
-    if cat_match == 0.0 and loc_score == 0.0:
-        if raw_score > 0.40:
-            final_score = 0.40
-            capped = True
-        else:
-            final_score = raw_score
-    else:
-        final_score = raw_score
+    cap_reasons = []
 
-    final_score = round(final_score, 3)
+    # Hard rule 1: Time gap over 72 hours is a hard non-match
+    if hours > 72.0:
+        raw_score = min(raw_score, 0.35)
+        capped = True
+        cap_reasons.append(f"Hard non-match: time gap of {hours:.1f}h exceeds the 72-hour incident grouping window.")
+
+    # Hard rule 2: Different location (neither identical room/facility nor same block) is a strict rule
+    # stopping "same category, different location" pairs from clustering
+    if loc_score == 0.0:
+        raw_score = min(raw_score, 0.40)
+        capped = True
+        cap_reasons.append("Hard non-match: complaints at different locations/blocks cannot be grouped into the same parent incident.")
+
+    # Hard rule 3: Both category and location differ
+    if cat_match == 0.0 and loc_score == 0.0:
+        raw_score = min(raw_score, 0.40)
+        capped = True
+        if "Hard non-match: complaints at different locations/blocks cannot be grouped into the same parent incident." not in cap_reasons:
+            cap_reasons.append("Capped at 0.40 by hard rule: both category and location differ.")
+
+    final_score = round(raw_score, 3)
 
     if final_score >= 0.80:
         band = "strong"
@@ -113,14 +136,13 @@ def calculate_relatedness(
         should_suggest = False
 
     reasons = [
+        f"Engine: {engine}",
         f"Text similarity: {round(text_cosine, 3)} (weight 45% -> {round(0.45 * text_cosine, 3)})",
         f"Location match: {loc_score} ({'Same location' if loc_score == 1.0 else 'Same block' if loc_score == 0.6 else 'Different locations'}) (weight 25% -> {round(0.25 * loc_score, 3)})",
-        f"Time proximity: {t_score} ({round(abs((time1 - time2).total_seconds()) / 3600.0, 1)}h apart) (weight 15% -> {round(0.15 * t_score, 3)})",
+        f"Time proximity: {t_score} ({round(hours, 1)}h apart) (weight 15% -> {round(0.15 * t_score, 3)})",
         f"Category match: {cat_match} ({'Exact match' if cat_match == 1.0 else 'Mismatched categories'}) (weight 15% -> {round(0.15 * cat_match, 3)})"
     ]
-    if capped:
-        reasons.append("Capped at 0.40 by hard rule: both category and location differ.")
-
+    reasons.extend(cap_reasons)
     reasons.append("System suggestion requires admin confirmation.")
 
     return {
@@ -129,6 +151,7 @@ def calculate_relatedness(
         "label": label,
         "should_suggest": should_suggest,
         "capped_by_hard_rule": capped,
+        "engine": engine,
         "components": {
             "text_cosine": round(text_cosine, 3),
             "location_score": loc_score,

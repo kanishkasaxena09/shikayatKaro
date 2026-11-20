@@ -1,10 +1,11 @@
 """Complaints management router for Project Shikayat Karo."""
 
+import os
 import secrets
 from datetime import timedelta
 from typing import List, Optional
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -19,6 +20,7 @@ from backend.ai.relatedness import calculate_relatedness, cosine_similarity
 from backend.ai.embedder import get_embedder
 from backend.ai.escalation import calculate_deadline
 from backend.clock import get_current_time
+from backend.limiter import track_limiter
 
 router = APIRouter(prefix="/api/complaints", tags=["complaints"])
 
@@ -31,7 +33,8 @@ def generate_tracking_id(db: Session) -> str:
 
 
 def hash_access_code(code: str) -> str:
-    salt = bcrypt.gensalt()
+    rounds = 4 if os.getenv("TESTING") else 12
+    salt = bcrypt.gensalt(rounds=rounds)
     return bcrypt.hashpw(code.encode("utf-8"), salt).decode("utf-8")
 
 
@@ -100,6 +103,27 @@ def submit_complaint(
     7. Generates 8-char access code if anonymous
     """
     now = get_current_time()
+
+    # Validate location if supplied
+    if payload.location_id is not None:
+        loc = db.query(Location).filter(Location.id == payload.location_id).first()
+        if not loc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid location_id: location {payload.location_id} does not exist"
+            )
+
+    # Double submit guard: detect identical text submitted within 5 seconds
+    recent_dup = db.query(Complaint).filter(
+        Complaint.text == payload.text.strip(),
+        Complaint.created_at >= now - timedelta(seconds=5)
+    ).first()
+    if recent_dup:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Duplicate submission detected: an identical complaint was just submitted. Please wait before retrying."
+        )
+
     tracking_id = generate_tracking_id(db)
 
     # 1. Anonymous handling
@@ -238,6 +262,7 @@ def submit_complaint(
                 target_suggestion.complaint_ids = c_ids
                 target_suggestion.reasons = list(set((target_suggestion.reasons or []) + best_relatedness["reasons"]))
                 target_suggestion.confidence = max(target_suggestion.confidence, best_relatedness["score"])
+                target_suggestion.engine = embedder.engine_type
                 db.flush()
                 suggestion_id = target_suggestion.id
                 suggestion_created = True
@@ -247,6 +272,7 @@ def submit_complaint(
                 complaint_ids=[best_match_complaint.id, complaint.id],
                 confidence=best_relatedness["score"],
                 reasons=best_relatedness["reasons"],
+                engine=embedder.engine_type,
                 status="pending",
                 created_at=now
             )
@@ -292,15 +318,20 @@ def get_my_complaints(
 
 @router.get("/track", response_model=ComplaintOut)
 def track_complaint(
-    tracking_id: str = Query(..., description="Complaint tracking code (CMP-XXXX)"),
-    access_code: Optional[str] = Query(None, description="8-character access code for anonymous complaints"),
+    tracking_id: str = Query(..., min_length=1, max_length=50, description="Complaint tracking code (CMP-XXXX)"),
+    access_code: Optional[str] = Query(None, max_length=50, description="8-character access code for anonymous complaints"),
+    request: Request = None,
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """Tracks a complaint without requiring login if valid tracking_id and access_code are provided.
     
     Guarantees that no anonymous complaint ever leaks complainant identity.
+    Rate-limited to prevent code enumeration.
     """
+    if request:
+        track_limiter.check(request)
+
     complaint = db.query(Complaint).filter(Complaint.tracking_id == tracking_id.strip()).first()
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found with provided tracking ID")

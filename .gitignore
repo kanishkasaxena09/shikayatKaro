@@ -13,9 +13,6 @@ env/
 env.bak/
 venv.bak/
 
-# Node dependencies
-node_modules/
-
 # Environment variables, credentials, and secrets
 .env
 .env.*
@@ -81,3 +78,11 @@ dist/
 */dist/
 .vite/
 */.vite/
+test-results/
+*/test-results/
+playwright-report/
+*/playwright-report/
+e2e-report/
+*/e2e-report/
+blob-report/
+*/blob-report/

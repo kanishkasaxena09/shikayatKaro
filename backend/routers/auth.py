@@ -1,11 +1,14 @@
 """Authentication and authorization router for Project Shikayat Karo."""
 
 import os
+import secrets
+import logging
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 import jwt
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -13,18 +16,57 @@ from backend.database import get_db
 from backend.models import User
 from backend.schemas import UserCreate, UserLogin, UserOut, Token
 from backend.clock import get_current_time
+from backend.limiter import login_limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-SECRET_KEY = os.getenv("JWT_SECRET", "shikayat_karo_super_secret_jwt_key_2026")
+OLD_DEFAULT_JWT_SECRET = "shikayat_karo_super_secret_jwt_key_2026"
+_EPHEMERAL_DEV_SECRET: Optional[str] = None
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+_AUTH_DB_LOCK = threading.Lock()
+
+
+def get_jwt_secret() -> str:
+    """Returns the active JWT secret.
+    
+    In production (ENVIRONMENT=production):
+    Refuses startup if JWT_SECRET is missing or set to the old default key.
+    
+    In development / testing:
+    Generates a secure random 32-byte secret at startup and logs a warning if unset.
+    """
+    global _EPHEMERAL_DEV_SECRET
+    env = os.getenv("ENVIRONMENT", "development").lower().strip()
+    secret = os.getenv("JWT_SECRET")
+
+    if env == "production":
+        if not secret or not secret.strip() or secret.strip() == OLD_DEFAULT_JWT_SECRET:
+            raise RuntimeError(
+                "Production startup failed: JWT_SECRET environment variable is missing or set to insecure default. "
+                "A strong, secure secret must be configured in production."
+            )
+        return secret.strip()
+
+    # In development or testing with an explicit secret:
+    if secret and secret.strip() and secret.strip() != OLD_DEFAULT_JWT_SECRET:
+        return secret.strip()
+
+    # In development without an explicit secret: generate random ephemeral secret
+    if _EPHEMERAL_DEV_SECRET is None:
+        _EPHEMERAL_DEV_SECRET = secrets.token_hex(32)
+        logging.getLogger("uvicorn.warning").warning(
+            "[SECURITY WARNING] No secure JWT_SECRET set. Generated random ephemeral secret for development."
+        )
+    return _EPHEMERAL_DEV_SECRET
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
 def hash_password(password: str) -> str:
-    salt = bcrypt.gensalt()
+    rounds = 4 if os.getenv("TESTING") else 12
+    salt = bcrypt.gensalt(rounds=rounds)
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
@@ -43,7 +85,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = now_utc + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire, "iat": now_utc})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_jwt_secret(), algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -51,18 +93,44 @@ def get_current_user_optional(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> Optional[User]:
-    """Returns the authenticated User or None if no/invalid token."""
+    """Returns the authenticated User or None if no token provided.
+    Raises 401 if a token was explicitly provided but is invalid or expired.
+    """
     if not token:
         return None
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # verify_iat is disabled to permit seamless token generation during virtual-clock fast-forwarding
+        payload = jwt.decode(token, get_jwt_secret(), algorithms=[ALGORITHM], options={"verify_iat": False})
         user_id = payload.get("sub")
         if user_id is None:
-            return None
-        user = db.query(User).filter(User.id == int(user_id)).first()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing subject",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        with _AUTH_DB_LOCK:
+            user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         return user
+    except HTTPException:
+        raise
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except Exception:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def get_current_user(
@@ -115,8 +183,10 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(login_req: UserLogin, db: Session = Depends(get_db)):
-    """Logs in with email and password, returning a JWT token."""
+def login(login_req: UserLogin, request: Request, db: Session = Depends(get_db)):
+    """Logs in with email and password, returning a JWT token. Rate-limited to prevent brute force."""
+    login_limiter.check(request)
+
     user = db.query(User).filter(User.email == login_req.email).first()
     if not user or not verify_password(login_req.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Invalid email or password")
