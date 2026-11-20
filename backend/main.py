@@ -16,6 +16,8 @@ from backend.seed import seed_database
 from backend.ai.escalation import check_and_apply_escalations
 from backend.routers import auth, complaints, suggestions, incidents, analytics, notifications, demo
 
+from backend.models import User
+
 # Background APScheduler job for escalation evaluations
 scheduler = BackgroundScheduler()
 
