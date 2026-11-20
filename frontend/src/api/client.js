@@ -88,6 +88,13 @@ export const api = {
   analytics: {
     getHeatmap: (params = {}) => client.get('/api/heatmap', { params }),
     getDashboardSummary: () => client.get('/api/dashboard/summary'),
+    getRecurringIssues: (params = {}) => client.get('/api/analytics/recurring', { params }),
+    markPermanentFix: (payload) => client.post('/api/analytics/recurring/mark-fix', payload),
+  },
+
+  // Departments endpoints
+  departments: {
+    list: () => client.get('/api/departments'),
   },
 
   // Notifications endpoints

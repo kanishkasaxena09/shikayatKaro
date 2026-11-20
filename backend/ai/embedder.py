@@ -15,11 +15,6 @@ import hashlib
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Any
 
-# Prevent Hugging Face from making network checks when models are cached locally
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
-os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
-
 # In-memory LRU / lookup cache for embeddings
 _EMBEDDING_CACHE: Dict[str, List[float]] = {}
 
@@ -31,6 +26,18 @@ class Embedder(ABC):
     @abstractmethod
     def dimension(self) -> int:
         """Returns the embedding vector dimension."""
+        pass
+
+    @property
+    @abstractmethod
+    def model_name(self) -> str:
+        """Returns the identifier or model name."""
+        pass
+
+    @property
+    @abstractmethod
+    def engine_type(self) -> str:
+        """Returns 'fallback' or 'neural'."""
         pass
 
     @abstractmethod
@@ -48,7 +55,7 @@ class SentenceTransformersEmbedder(Embedder):
     """Embedder using sentence-transformers paraphrase-multilingual-MiniLM-L12-v2."""
 
     def __init__(self, model_name: str = "paraphrase-multilingual-MiniLM-L12-v2"):
-        self.model_name = model_name
+        self._model_name = model_name
         self._model: Any = None
         self._dim = 384
 
@@ -56,7 +63,7 @@ class SentenceTransformersEmbedder(Embedder):
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
-                self._model = SentenceTransformer(self.model_name)
+                self._model = SentenceTransformer(self._model_name)
             except Exception:
                 self._model = FallbackEmbedder(self._dim)
         return self._model
@@ -64,6 +71,14 @@ class SentenceTransformersEmbedder(Embedder):
     @property
     def dimension(self) -> int:
         return self._dim
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def engine_type(self) -> str:
+        return "neural"
 
     def embed(self, text: str) -> List[float]:
         cleaned = text.strip() if text else ""
@@ -120,7 +135,7 @@ class FastEmbedder(Embedder):
     """Low-memory alternative using fastembed package."""
 
     def __init__(self, model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"):
-        self.model_name = model_name
+        self._model_name = model_name
         self._model: Any = None
         self._dim = 384
 
@@ -128,7 +143,7 @@ class FastEmbedder(Embedder):
         if self._model is None:
             try:
                 from fastembed import TextEmbedding
-                self._model = TextEmbedding(model_name=self.model_name)
+                self._model = TextEmbedding(model_name=self._model_name)
             except Exception:
                 self._model = FallbackEmbedder(self._dim)
         return self._model
@@ -136,6 +151,14 @@ class FastEmbedder(Embedder):
     @property
     def dimension(self) -> int:
         return self._dim
+
+    @property
+    def model_name(self) -> str:
+        return self._model_name
+
+    @property
+    def engine_type(self) -> str:
+        return "neural"
 
     def embed(self, text: str) -> List[float]:
         cleaned = text.strip() if text else ""
@@ -158,7 +181,37 @@ class FastEmbedder(Embedder):
         return vec_list
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
-        return [self.embed(t) for t in texts]
+        results: List[List[float]] = [[] for _ in texts]
+        texts_to_embed: List[str] = []
+        indices_to_embed: List[int] = []
+
+        for i, text in enumerate(texts):
+            cleaned = text.strip() if text else ""
+            cache_key = f"fe:{hashlib.sha256(cleaned.encode('utf-8')).hexdigest()}"
+            if cache_key in _EMBEDDING_CACHE:
+                results[i] = _EMBEDDING_CACHE[cache_key]
+            else:
+                texts_to_embed.append(cleaned)
+                indices_to_embed.append(i)
+
+        if texts_to_embed:
+            model = self._load_model()
+            if isinstance(model, Embedder):
+                batch_res = model.embed_batch(texts_to_embed)
+                for idx, emb in zip(indices_to_embed, batch_res):
+                    results[idx] = emb
+                    cache_key = f"fe:{hashlib.sha256(texts[idx].strip().encode('utf-8')).hexdigest()}"
+                    _EMBEDDING_CACHE[cache_key] = emb
+            else:
+                raw_embeds = list(model.embed(texts_to_embed))
+                for idx, vec in zip(indices_to_embed, raw_embeds):
+                    norm = math.sqrt(sum(x * x for x in vec))
+                    vec_list = [float(x / norm) if norm > 0 else 0.0 for x in vec]
+                    cache_key = f"fe:{hashlib.sha256(texts[idx].strip().encode('utf-8')).hexdigest()}"
+                    _EMBEDDING_CACHE[cache_key] = vec_list
+                    results[idx] = vec_list
+
+        return results
 
 
 class FallbackEmbedder(Embedder):
@@ -207,6 +260,14 @@ class FallbackEmbedder(Embedder):
     @property
     def dimension(self) -> int:
         return self._dim
+
+    @property
+    def model_name(self) -> str:
+        return "fallback-concept-projection-384d"
+
+    @property
+    def engine_type(self) -> str:
+        return "fallback"
 
     def embed(self, text: str) -> List[float]:
         cleaned = text.strip() if text else ""
@@ -262,24 +323,42 @@ class FallbackEmbedder(Embedder):
 _ACTIVE_EMBEDDER: Optional[Embedder] = None
 
 
+def reset_active_embedder():
+    """Resets the globally active embedder instance."""
+    global _ACTIVE_EMBEDDER
+    _ACTIVE_EMBEDDER = None
+
+
 def get_embedder() -> Embedder:
-    """Returns the globally configured Embedder instance."""
+    """Returns the globally configured Embedder instance.
+
+    Production order:
+    1. If EMBEDDER=fallback (or in fast unit tests with TESTING=1 and EMBEDDER unset), uses FallbackEmbedder.
+    2. If EMBEDDER=sentence-transformers, uses SentenceTransformersEmbedder.
+    3. If EMBEDDER=fastembed or default (unset), uses FastEmbedder (recommended production setting: ~110MB quantized ONNX).
+    4. Otherwise falls back to FallbackEmbedder.
+    """
     global _ACTIVE_EMBEDDER
     if _ACTIVE_EMBEDDER is not None:
         return _ACTIVE_EMBEDDER
 
-    embedder_env = os.getenv("EMBEDDER", "sentence-transformers").lower().strip()
+    embedder_env = os.getenv("EMBEDDER", "").lower().strip()
 
-    if embedder_env == "fastembed":
+    if embedder_env == "fallback" or (os.getenv("TESTING") == "1" and not embedder_env):
+        _ACTIVE_EMBEDDER = FallbackEmbedder()
+        return _ACTIVE_EMBEDDER
+
+    if embedder_env == "sentence-transformers":
         try:
-            _ACTIVE_EMBEDDER = FastEmbedder()
+            _ACTIVE_EMBEDDER = SentenceTransformersEmbedder()
             return _ACTIVE_EMBEDDER
         except Exception:
             pass
 
-    if embedder_env in ["sentence-transformers", "default", ""]:
+    # FastEmbed is the recommended neural production embedder
+    if embedder_env in ["fastembed", "production", "default", ""]:
         try:
-            _ACTIVE_EMBEDDER = SentenceTransformersEmbedder()
+            _ACTIVE_EMBEDDER = FastEmbedder()
             return _ACTIVE_EMBEDDER
         except Exception:
             pass

@@ -1,0 +1,452 @@
+[
+  {
+    "text": "Low water pressure on third floor washbasins makes hand washing impossible",
+    "expected_category": "Water & Plumbing",
+    "language": "en"
+  },
+  {
+    "text": "Severe sewage backflow in chemistry department basement plumbing",
+    "expected_category": "Water & Plumbing",
+    "language": "en"
+  },
+  {
+    "text": "Drinking water fountain filter cartridge expired and giving foul taste",
+    "expected_category": "Water & Plumbing",
+    "language": "en"
+  },
+  {
+    "text": "Continuous leak behind the hot water cylinder valve in sports complex",
+    "expected_category": "Water & Plumbing",
+    "language": "en"
+  },
+  {
+    "text": "तीसरी मंजिल के सभी नलों में पानी का दबाव बहुत कम है",
+    "expected_category": "Water & Plumbing",
+    "language": "hi"
+  },
+  {
+    "text": "रसायन विज्ञान विभाग के तहखाने में जल निकासी पाइप भर गया है",
+    "expected_category": "Water & Plumbing",
+    "language": "hi"
+  },
+  {
+    "text": "वॉशबेसिन के नीचे का साइफन पाइप टूट गया है और फर्श गीला है",
+    "expected_category": "Water & Plumbing",
+    "language": "hi"
+  },
+  {
+    "text": "Gym ke washroom mein tap se paani nahi aa raha bilkul dry hai",
+    "expected_category": "Water & Plumbing",
+    "language": "hinglish"
+  },
+  {
+    "text": "Third floor par water pressure bohot low hai balti nahi bhar rahi",
+    "expected_category": "Water & Plumbing",
+    "language": "hinglish"
+  },
+  {
+    "text": "Water cooler ka filter chocked hai ganda paani nikal raha hai",
+    "expected_category": "Water & Plumbing",
+    "language": "hinglish"
+  },
+  {
+    "text": "High voltage fluctuation in electronics lab caused circuit breakers to trip",
+    "expected_category": "Electrical",
+    "language": "en"
+  },
+  {
+    "text": "Exhaust fan in chemistry research lab stopped functioning during experiment",
+    "expected_category": "Electrical",
+    "language": "en"
+  },
+  {
+    "text": "Burning plastic smell coming from corridor fluorescent light fitting",
+    "expected_category": "Electrical",
+    "language": "en"
+  },
+  {
+    "text": "Outdoor floodlight near basketball court is shattered and dangling by wire",
+    "expected_category": "Electrical",
+    "language": "en"
+  },
+  {
+    "text": "प्रयोगशाला में वोल्टेज में भारी उतार-चढ़ाव से उपकरण बंद हो गए हैं",
+    "expected_category": "Electrical",
+    "language": "hi"
+  },
+  {
+    "text": "कॉरिडोर की ट्यूबलाइट से जलने की तीखी गंध आ रही है",
+    "expected_category": "Electrical",
+    "language": "hi"
+  },
+  {
+    "text": "बास्केटबॉल कोर्ट के पास की बड़ी लाइट तार से लटक रही है",
+    "expected_category": "Electrical",
+    "language": "hi"
+  },
+  {
+    "text": "Lab ke main distribution board se humming sound aur heat nikal rahi hai",
+    "expected_category": "Electrical",
+    "language": "hinglish"
+  },
+  {
+    "text": "Corridor ka exhaust fan jaam ho gaya hai bilkul hawa nahi nikal rahi",
+    "expected_category": "Electrical",
+    "language": "hinglish"
+  },
+  {
+    "text": "Seminar room ke switches loose hain aur plug lagate hi spark hota hai",
+    "expected_category": "Electrical",
+    "language": "hinglish"
+  },
+  {
+    "text": "Foul odor coming from accumulated dry leaves and stagnant puddles behind canteen",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "en"
+  },
+  {
+    "text": "Restroom mirrors covered in mold and soap dispensers ripped off walls",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "en"
+  },
+  {
+    "text": "Stray dog feces scattered across main academic quadrangle walkway",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "en"
+  },
+  {
+    "text": "Discarded plastic packaging and tea cups piling up along library pathway",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "en"
+  },
+  {
+    "text": "कैंटीन के पीछे कूड़ा जमा होने से असहनीय दुर्गंध फैल रही है",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hi"
+  },
+  {
+    "text": "अकादमिक ब्लॉक के रास्तों पर कचरे के ढेर लगे हुए हैं सफाई नहीं हुई",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hi"
+  },
+  {
+    "text": "शौचालय में हैंडवॉश डिस्पेंसर खाली हैं और बेसिन पर काई जमी है",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hi"
+  },
+  {
+    "text": "Library pathway par kachra aur paper cups bikhre hue hain safai karwao",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hinglish"
+  },
+  {
+    "text": "Canteen ke piche sadan aur badboo fail rahi hai macchar ho gaye hain",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hinglish"
+  },
+  {
+    "text": "Washroom ke washbasin mein pan masala thuka hua hai bohot gandagi hai",
+    "expected_category": "Sanitation & Cleanliness",
+    "language": "hinglish"
+  },
+  {
+    "text": "DNS resolution failing on campus subnet preventing access to journal repositories",
+    "expected_category": "IT & Network",
+    "language": "en"
+  },
+  {
+    "text": "Ethernet wall port 24 in computer centre is dead and link light is off",
+    "expected_category": "IT & Network",
+    "language": "en"
+  },
+  {
+    "text": "Unable to connect to college VPN from outside campus network",
+    "expected_category": "IT & Network",
+    "language": "en"
+  },
+  {
+    "text": "Campus proxy server returning 502 bad gateway during course registration",
+    "expected_category": "IT & Network",
+    "language": "en"
+  },
+  {
+    "text": "कॉलेज का डीएनएस सर्वर काम नहीं कर रहा जिससे शोध पत्रिकाएं नहीं खुल रहीं",
+    "expected_category": "IT & Network",
+    "language": "hi"
+  },
+  {
+    "text": "कंप्यूटर सेंटर के लैन पोर्ट में इंटरनेट सिग्नल नहीं आ रहा है",
+    "expected_category": "IT & Network",
+    "language": "hi"
+  },
+  {
+    "text": "छात्र पंजीकरण के दौरान प्रॉक्सी सर्वर बार-बार क्रैश हो रहा है",
+    "expected_category": "IT & Network",
+    "language": "hi"
+  },
+  {
+    "text": "Hostel LAN cable connect karne par bhi no internet access dikha raha hai",
+    "expected_category": "IT & Network",
+    "language": "hinglish"
+  },
+  {
+    "text": "College VPN connect nahi ho raha bar bar connection timed out error aa raha",
+    "expected_category": "IT & Network",
+    "language": "hinglish"
+  },
+  {
+    "text": "Academic portal registration page load nahi ho raha gateway timeout hai",
+    "expected_category": "IT & Network",
+    "language": "hinglish"
+  },
+  {
+    "text": "Cold, uncooked chapattis and stale curd served for dinner in south block mess",
+    "expected_category": "Hostel & Mess",
+    "language": "en"
+  },
+  {
+    "text": "Bed bugs infestation reported in mattress of dorm cubicle 304",
+    "expected_category": "Hostel & Mess",
+    "language": "en"
+  },
+  {
+    "text": "Window glass shutter missing in hostel room allowing rain inside",
+    "expected_category": "Hostel & Mess",
+    "language": "en"
+  },
+  {
+    "text": "Mess drinking water dispenser has visible algae inside the glass tank",
+    "expected_category": "Hostel & Mess",
+    "language": "en"
+  },
+  {
+    "text": "हॉस्टल की मेस में अधपकी रोटियां और बासी खाना परोसा जा रहा है",
+    "expected_category": "Hostel & Mess",
+    "language": "hi"
+  },
+  {
+    "text": "कमरे की खिड़की का कांच टूटा होने से बारिश का पानी बिस्तर पर आ रहा है",
+    "expected_category": "Hostel & Mess",
+    "language": "hi"
+  },
+  {
+    "text": "मेस के पानी के बड़े कंटेनर में काई और कीड़े दिखाई दे रहे हैं",
+    "expected_category": "Hostel & Mess",
+    "language": "hi"
+  },
+  {
+    "text": "Mess dinner mein sabzi kacchi thi aur daal bilkul paani jaisi thi",
+    "expected_category": "Hostel & Mess",
+    "language": "hinglish"
+  },
+  {
+    "text": "Room ke bed mattress mein khatmal hain raat ko sone nahi de rahe",
+    "expected_category": "Hostel & Mess",
+    "language": "hinglish"
+  },
+  {
+    "text": "Almirah ka handle toota hai aur door theek se band nahi hota",
+    "expected_category": "Hostel & Mess",
+    "language": "hinglish"
+  },
+  {
+    "text": "Microphone audio feedback whistling loudly in lecture hall auditorium 1",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "en"
+  },
+  {
+    "text": "Ceiling fan regulator knob broken stuck at full speed in classroom 204",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "en"
+  },
+  {
+    "text": "Wooden desktop writing surfaces deeply gouged and splintered in tutorial room",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "en"
+  },
+  {
+    "text": "Whiteboard marker tray detached and board surface cannot be erased",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "en"
+  },
+  {
+    "text": "ऑडिटोरियम के माइक से बहुत तेज सीटी जैसी आवाज आ रही है",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hi"
+  },
+  {
+    "text": "कक्षा 204 की डेस्क और कुर्सियों की कीलें बाहर निकली हुई हैं",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hi"
+  },
+  {
+    "text": "व्हाइटबोर्ड पर मार्कर मिट नहीं रहा है सतह पूरी खराब हो चुकी है",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hi"
+  },
+  {
+    "text": "Lecture hall 3 ka mic sound echo kar raha hai audio samajh nahi aa raha",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hinglish"
+  },
+  {
+    "text": "Classroom ki benches bohot hilti hain aur baithne mein dard hota hai",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hinglish"
+  },
+  {
+    "text": "Tutorial room ka ceiling fan regulator kharab hai slow nahi ho raha",
+    "expected_category": "Classroom & Infrastructure",
+    "language": "hinglish"
+  },
+  {
+    "text": "Hostel back gate security lock broken leaving rear entrance open overnight",
+    "expected_category": "Safety & Security",
+    "language": "en"
+  },
+  {
+    "text": "Campus perimeter chain-link fence cut open near railway track boundary",
+    "expected_category": "Safety & Security",
+    "language": "en"
+  },
+  {
+    "text": "Fire extinguisher pressure gauge indicates empty inside physics laboratory",
+    "expected_category": "Safety & Security",
+    "language": "en"
+  },
+  {
+    "text": "Motorcycle helmet stolen from unlocked two-wheeler parking lot",
+    "expected_category": "Safety & Security",
+    "language": "en"
+  },
+  {
+    "text": "हॉस्टल के पिछले गेट का ताला टूटा हुआ है और रात में खुला रहता है",
+    "expected_category": "Safety & Security",
+    "language": "hi"
+  },
+  {
+    "text": "भौतिकी लैब का अग्निशामक यंत्र खाली है और प्रेशर शून्य है",
+    "expected_category": "Safety & Security",
+    "language": "hi"
+  },
+  {
+    "text": "कैंपस की दीवार के पास कंटीले तार टूटे हुए हैं बाहरी लोग आ रहे",
+    "expected_category": "Safety & Security",
+    "language": "hi"
+  },
+  {
+    "text": "Bike parking area se helmet chori ho gaya wahan CCTV camera band tha",
+    "expected_category": "Safety & Security",
+    "language": "hinglish"
+  },
+  {
+    "text": "Physics lab mein fire extinguisher expired hai aur pressure zero hai",
+    "expected_category": "Safety & Security",
+    "language": "hinglish"
+  },
+  {
+    "text": "Hostel back gate par koi guard nahi rehta outsiders freely enter kar rahe",
+    "expected_category": "Safety & Security",
+    "language": "hinglish"
+  },
+  {
+    "text": "First year students coerced into late night parade and humiliation by senior cohort",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "en"
+  },
+  {
+    "text": "Inappropriate stalking and clicking unauthorized photos outside women common room",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "en"
+  },
+  {
+    "text": "Offensive slurs and verbal intimidation targeted during sports trial selection",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "en"
+  },
+  {
+    "text": "Group of students aggressively blocking library stairway and passing vulgar remarks",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "en"
+  },
+  {
+    "text": "प्रथम वर्ष के छात्रों को देर रात बुलाकर अपमानित और परेशान किया जा रहा है",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hi"
+  },
+  {
+    "text": "गर्ल्स कॉमन रूम के बाहर अज्ञात व्यक्तियों द्वारा तस्वीरें खींचने की शिकायत",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hi"
+  },
+  {
+    "text": "खेल मैदान में जातिसूचक और अपमानजनक शब्दों से धमकाने का मामला",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hi"
+  },
+  {
+    "text": "Hostel corridor mein raat ko juniors par chillana aur ragging karna",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hinglish"
+  },
+  {
+    "text": "Canteen ke paas ladkiyon par objectionable comments pass kiye gaye",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hinglish"
+  },
+  {
+    "text": "Sports ground par senior students threat de rahe hain match se bahar karne ki",
+    "expected_category": "Harassment & Misconduct (confidential)",
+    "language": "hinglish"
+  },
+  {
+    "text": "No dues clearance certificate pending for three weeks preventing degree issuance",
+    "expected_category": "Administrative",
+    "language": "en"
+  },
+  {
+    "text": "Library fine erroneously charged on portal after physical book return was stamped",
+    "expected_category": "Administrative",
+    "language": "en"
+  },
+  {
+    "text": "Scholarship disbursement installment delayed beyond university semester deadline",
+    "expected_category": "Administrative",
+    "language": "en"
+  },
+  {
+    "text": "Transcript attestation application stuck in registrar dispatch section",
+    "expected_category": "Administrative",
+    "language": "en"
+  },
+  {
+    "text": "पुस्तकालय से पुस्तक जमा करने के बाद भी पोर्टल पर जुर्माना दिखाया जा रहा है",
+    "expected_category": "Administrative",
+    "language": "hi"
+  },
+  {
+    "text": "छात्रवृत्ति की राशि खाते में स्थानांतरित करने में तीन माह की देरी हो चुकी है",
+    "expected_category": "Administrative",
+    "language": "hi"
+  },
+  {
+    "text": "अनापत्ति प्रमाण पत्र जारी न होने से डिग्री प्रमाण पत्र अटका हुआ है",
+    "expected_category": "Administrative",
+    "language": "hi"
+  },
+  {
+    "text": "Book return karne ke baad bhi library fine system mein clear nahi kiya",
+    "expected_category": "Administrative",
+    "language": "hinglish"
+  },
+  {
+    "text": "Scholarship disbursement list mein naam hone par bhi amount credit nahi hua",
+    "expected_category": "Administrative",
+    "language": "hinglish"
+  },
+  {
+    "text": "No dues form submit kiya tha do hafte pehle registrar office ne sign nahi kiya",
+    "expected_category": "Administrative",
+    "language": "hinglish"
+  }
+]
