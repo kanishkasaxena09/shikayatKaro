@@ -11,10 +11,11 @@ from fastapi import FastAPI, Depends, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from backend.database import engine, Base, SessionLocal, get_db
+from backend.database import engine, Base, SessionLocal, get_db, ensure_database_schema
 from backend.seed import seed_database
 from backend.ai.escalation import check_and_apply_escalations
 from backend.routers import auth, complaints, suggestions, incidents, analytics, notifications, demo
+from backend.schemas import LocationOut, PermanentFixCreate, PermanentFixTaskOut
 
 from backend.models import User
 
@@ -89,6 +90,7 @@ async def lifespan(app: FastAPI):
     # 1. Initialize database tables & master data if not in test suite
     if not os.getenv("TESTING"):
         Base.metadata.create_all(bind=engine)
+        ensure_database_schema(engine)
         try:
             seed_database()
         except Exception as e:
@@ -180,6 +182,24 @@ def api_departments_alias(db=Depends(get_db)):
     """Direct alias for GET /api/departments"""
     from backend.models import Department
     return db.query(Department).all()
+
+
+@app.get("/api/locations", tags=["locations"], response_model=List[LocationOut])
+def api_locations_alias(db=Depends(get_db)):
+    """Direct alias for GET /api/locations"""
+    from backend.models import Location
+    return db.query(Location).all()
+
+
+@app.post("/api/recurring/mark-fix", tags=["analytics"], response_model=PermanentFixTaskOut)
+def api_recurring_mark_fix_alias(
+    data: PermanentFixCreate,
+    current_user: User = Depends(auth.require_role(["admin", "handler"])),
+    db=Depends(get_db)
+):
+    """Direct alias for POST /api/recurring/mark-fix"""
+    from backend.routers.analytics import mark_permanent_fix
+    return mark_permanent_fix(data=data, current_user=current_user, db=db)
 
 
 @app.get("/api/health")

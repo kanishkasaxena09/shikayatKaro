@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any, List
 import bcrypt
 from sqlalchemy.orm import Session
 
-from backend.database import SessionLocal, engine, Base
+from backend.database import SessionLocal, engine, Base, ensure_database_schema
 from backend.models import (
     Department, User, Location, Incident, Complaint, EscalationRule, Suggestion, Update, Notification, PermanentFixTask
 )
@@ -255,6 +255,7 @@ def seed_database(db: Optional[Session] = None, bind_engine = None):
     """
     active_engine = bind_engine or engine
     Base.metadata.create_all(bind=active_engine)
+    ensure_database_schema(active_engine)
     close_on_exit = False
     if db is None:
         db = SessionLocal()

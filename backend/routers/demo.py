@@ -53,16 +53,24 @@ def load_demo_story(db: Session = Depends(get_db)):
     pending_sugg = db.query(Suggestion).filter(Suggestion.status == "pending").order_by(Suggestion.id.desc()).first()
     demo_complaints = db.query(Complaint).filter(Complaint.tracking_id.like("CMP-DEMO-%")).all()
 
+    demo_codes = {
+        "CMP-DEMO-005": "DEMO1234",
+        "CMP-DEMO-007": "ANON9999",
+    }
+
     created_info = []
     for c in demo_complaints:
-        created_info.append({
+        item = {
             "tracking_id": c.tracking_id,
             "language": c.original_language,
             "is_anonymous": c.is_anonymous,
             "category": c.category,
             "priority": c.priority,
             "in_suggestion": bool(pending_sugg and c.id in (pending_sugg.complaint_ids or []))
-        })
+        }
+        if c.is_anonymous:
+            item["access_code"] = demo_codes.get(c.tracking_id, "DEMO1234")
+        created_info.append(item)
 
     return {
         "message": "Demo story loaded: 5 clustered complaints at Hostel Block B + 2 unclustered complaints.",
